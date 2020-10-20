@@ -1,5 +1,6 @@
 import vrep
 import numpy as np
+import time
 
 
 def rotate(angle, desired_angle):
@@ -15,19 +16,21 @@ def skew(v):
 
 
 class Car:
-    q = np.zeros([3, 1])  # [phi; x; y]
-    T = np.eye(4)
     is_stop = False
     x_real = [0]
     y_real = [0]
     x_estm = [0]
     y_estm = [0]
 
+    _T = np.eye(4)
+    _period = 0.25  # seconds between odometry update
+
     def __init__(self, client_id, car_name, wheel_names, w, l, r):
+        self._next_call = time.time()
         self.client_id = client_id
         assert len(wheel_names) == 4
         _, self.car_handle = vrep.simxGetObjectHandle(client_id, car_name, vrep.simx_opmode_oneshot_wait)
-        _, self.position_real = vrep.simxGetObjectPosition(client_id, self.car_handle, -1, vrep.simx_opmode_streaming)
+        _, self._position_real = vrep.simxGetObjectPosition(client_id, self.car_handle, -1, vrep.simx_opmode_streaming)
 
         _, omni_tl_handle = vrep.simxGetObjectHandle(client_id, wheel_names[0], vrep.simx_opmode_oneshot_wait)
         _, omni_tr_handle = vrep.simxGetObjectHandle(client_id, wheel_names[1], vrep.simx_opmode_oneshot_wait)
@@ -50,8 +53,11 @@ class Car:
                                  [-1,       1,      -1,        1      ]])
 
     def run(self):
+        self._next_call = time.time()
         while True:
-            self.update_position()
+            self.update_odometry()
+            self._next_call += self._period
+            time.sleep(self._next_call - time.time())
             if self.is_stop:
                 break
 
@@ -71,7 +77,7 @@ class Car:
         u = 1 / self.r * np.dot(self.H_0, dq)
         self.set_wheels_velocities(u)
 
-    def update_position(self):
+    def update_odometry(self):
         q_tl, dq_tl = self.omni_tl.get_angle()
         q_tr, dq_tr = self.omni_tr.get_angle()
         q_br, dq_br = self.omni_br.get_angle()
@@ -89,23 +95,18 @@ class Car:
         row_2 = np.array([0, 0, 0, 1]).reshape((1, 4))
         e_s = np.concatenate((row_1, row_2))
         # e_s = np.array([[e_w, pos], [np.zeros((1, 3)), 1]])  # e^{[S]*theta}
-        self.T = self.T @ e_s
-        self.x_estm.append(self.T[0, 3])
-        self.y_estm.append(self.T[1, 3])
-        return self.T
+        self._T = self._T @ e_s
+        self.x_estm.append(self._T[0, 3])
+        self.y_estm.append(self._T[1, 3])
 
-    def get_position_real(self):
-        _, self.position_real = vrep.simxGetObjectPosition(self.client_id, self.car_handle, -1, vrep.simx_opmode_buffer)
-        self.x_real.append(self.position_real[0])
-        self.y_real.append(self.position_real[1])
-        return self.position_real
-
-    def get_position_estimated(self):
-        return self.T[:3, 3].reshape((3, 1))
+        # OPTIONAL: fetch real position from V-Rep for odometry error evaluation
+        _, self._position_real = vrep.simxGetObjectPosition(self.client_id, self.car_handle, -1, vrep.simx_opmode_buffer)
+        self.x_real.append(self._position_real[0])
+        self.y_real.append(self._position_real[1])
 
     def get_position_error(self):
-        real_pos = np.asarray(self.get_position_real()).reshape((3, 1))
-        estimated_pos = self.get_position_estimated()
+        real_pos = np.asarray(self._position_real).reshape((3, 1))
+        estimated_pos = self._T[:3, 3].reshape((3, 1))
         # estimated_pos[[0, 1], :] = estimated_pos[[1, 0], :]  # body to space frame
         error = np.linalg.norm(real_pos[:2] - estimated_pos[:2])
         return error
@@ -153,23 +154,3 @@ class Wheel:
     def get_object_orientation(self):
         _, self.orientation = vrep.simxGetObjectOrientation(self.client_id, self.handle, -1, vrep.simx_opmode_buffer)
         return self.orientation
-
-# class OmniPlotter:
-#     x = []
-#     y = []
-#
-#     def __init__(self, car):
-#         self.car = car
-#         plt.plot(self.x, self.y)
-#         self.anim = FuncAnimation(plt.gcf(), self.animate, interval=100)
-#         plt.tight_layout()
-#         plt.show()
-#
-#     def animate(self, i):
-#         # T = self.car.update_position()
-#         self.x.append(self.car.T[0, 3])
-#         self.y.append(self.car.T[1, 3])
-#
-#         plt.cla()
-#         plt.plot(self.x, self.y)
-

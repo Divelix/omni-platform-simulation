@@ -12,7 +12,7 @@ class OmniParser:
     s v c - set velocity in car reference frame (3 numbers)
     """
     commands = {
-        'exit': 'exit',
+        'quit': 'q',
         'reset': 'r',
         'get': 'g',
         'set': 's',
@@ -25,19 +25,19 @@ class OmniParser:
 
     def __init__(self, client_id, car):
         self.client_id = client_id
-        self.car = car
+        self._car = car
 
     def run(self):
         while True:
             reply = input("Input commands: ")
             words = reply.split(' ')
-            if words[0] == self.commands['exit']:
-                print("exit")
+            if words[0] == self.commands['quit']:
+                print("quit")
                 vrep.simxStopSimulation(self.client_id, vrep.simx_opmode_oneshot)
-                self.car.is_stop = True
+                self._car.is_stop = True
                 break
             elif words[0] == self.commands['reset']:
-                self.car.set_wheels_velocities([0, 0, 0, 0])
+                self._car.set_wheels_velocities([0, 0, 0, 0])
             elif words[0] == self.commands['get']:
                 print("get", end=" ")
                 if words[1] == self.commands['position']:
@@ -45,9 +45,9 @@ class OmniParser:
                     # print(self.car.get_joint_position())
                 elif words[1] == self.commands['velocity']:
                     print("velocity", end=" ")
-                    print(self.car.get_joint_velocities())
+                    print(self._car.get_joint_velocities())
                 elif words[1] == self.commands['error']:
-                    print(f"Position error = {self.car.get_position_error()}")
+                    print(f"Position error = {self._car.get_position_error()}")
             elif words[0] == self.commands['set']:
                 print("set", end=" ")
                 if words[1] == self.commands['position']:
@@ -56,9 +56,9 @@ class OmniParser:
                     if ',' in words[-1]:
                         pos = [float(f) for f in words[-1].split(',')]
                     if words[2] == self.commands['car']:
-                        self.car.set_car_velocity(pos)
+                        self._car.set_car_velocity(pos)
                     elif words[2] == self.commands['wheel']:
-                        self.car.set_wheels_velocities(pos)
+                        self._car.set_wheels_velocities(pos)
                     print(pos)
                 elif words[1] == self.commands['velocity']:
                     print("velocity", end=" ")
@@ -66,7 +66,7 @@ class OmniParser:
                     if ',' in words[-1]:
                         vel = [float(f) for f in words[-1].split(',')]
                     if words[2] == self.commands['car']:
-                        self.car.set_car_velocity(vel)
+                        self._car.set_car_velocity(vel)
                     elif words[2] == self.commands['wheel']:
-                        self.car.set_wheels_velocities(vel)
+                        self._car.set_wheels_velocities(vel)
                     print(vel)

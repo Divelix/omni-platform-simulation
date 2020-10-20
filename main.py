@@ -1,6 +1,6 @@
 from omni import Car, vrep
 from input import OmniParser
-from vis import MyPlotClass, plt
+from vis import OmniPlotter, plt
 import sys
 import threading
 
@@ -24,14 +24,15 @@ l = 0.125
 r = 0.09 / 2  # wheel radius
 car = Car(client_id, car_name, wheel_names, w, l, r)
 car_thread = threading.Thread(target=car.run)
+car_thread.start()
+
 parser = OmniParser(client_id, car)
 input_thread = threading.Thread(target=parser.run)
-plotter = MyPlotClass(car)
-
-car_thread.start()
 input_thread.start()
+
+plotter = OmniPlotter(car)
 plt.show()
 
-input_thread.join()
 car_thread.join()
+input_thread.join()
 
