@@ -1,18 +1,6 @@
 import vrep
-import numpy as np
+from omnimath import *
 import time
-
-
-def rotate(angle, desired_angle):
-    xa = [np.cos(angle), np.sin(angle)]
-    rot = np.array([[np.cos(-desired_angle), -np.sin(-desired_angle)], [np.sin(-desired_angle), np.cos(-desired_angle)]])
-    delta_v = np.dot(rot, xa)
-    delta = np.arctan2(delta_v[1], delta_v[0])
-    return delta
-
-
-def skew(v):
-    return np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
 
 
 class Car:
@@ -23,7 +11,7 @@ class Car:
     y_estm = [0]
 
     _T = np.eye(4)
-    _period = 0.25  # seconds between odometry update
+    _period = 0.5  # seconds between odometry update
 
     def __init__(self, client_id, car_name, wheel_names, w, l, r):
         self._next_call = time.time()
@@ -85,17 +73,20 @@ class Car:
         dq = np.array([dq_tl, dq_tr, dq_br, dq_bl]).T
         v_b = np.dot(self.F, dq)
         v_b6 = np.array([0, 0, v_b[0], v_b[1], v_b[2], 0]).T
-        w = v_b6[:3]
-        v = v_b6[3:].reshape((3, 1))
-        theta = np.linalg.norm(w)
-        w_skew = skew(w)
-        e_w = np.eye(3) + np.sin(theta)*w_skew + (1 - np.cos(theta))*w_skew@w_skew  # Rodriguez formula
-        pos = (np.eye(3)*theta + (1 - np.cos(theta))*w_skew + (theta - np.sin(theta))*w_skew@w_skew)@v
-        row_1 = np.concatenate((e_w, pos), axis=1)
-        row_2 = np.array([0, 0, 0, 1]).reshape((1, 4))
-        e_s = np.concatenate((row_1, row_2))
-        # e_s = np.array([[e_w, pos], [np.zeros((1, 3)), 1]])  # e^{[S]*theta}
-        self._T = self._T @ e_s
+
+        # w = v_b6[:3]
+        # v = v_b6[3:].reshape((3, 1))
+        # theta = np.linalg.norm(w)  # TODO mistake candidate
+        # w_skew = skew(w)
+        # e_w = np.eye(3) + np.sin(theta)*w_skew + (1 - np.cos(theta))*w_skew@w_skew  # Rodriguez formula
+        # pos = (np.eye(3)*theta + (1 - np.cos(theta))*w_skew + (theta - np.sin(theta))*w_skew@w_skew)@v
+        # row_1 = np.concatenate((e_w, pos), axis=1)
+        # row_2 = np.array([0, 0, 0, 1]).reshape((1, 4))
+        # dT = np.concatenate((row_1, row_2))
+
+        dT = vec6_to_SE3(v_b6)
+        # print(dT)
+        self._T = self._T @ dT
         self.x_estm.append(self._T[0, 3])
         self.y_estm.append(self._T[1, 3])
 
