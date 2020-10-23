@@ -8,7 +8,7 @@ class OmniPlotter:
         self.line1, = plt.plot(0, 0, color="r", label="ground truth")
         self.line2, = plt.plot(0, 0, color="b", label="estimated value")
         plt.legend(loc='upper right')
-        self.anim = FuncAnimation(plt.gcf(), self.update, interval=1000, repeat=True)
+        self.anim = FuncAnimation(plt.gcf(), self.update, interval=1000)
 
     def update(self, i):
         self.line1.set_data(self._car.x_real, self._car.y_real)

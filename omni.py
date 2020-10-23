@@ -11,7 +11,7 @@ class Car:
     y_estm = [0]
 
     _T = np.eye(4)
-    _period = 0.5  # seconds between odometry update
+    _period = 0.2  # seconds between odometry update
 
     def __init__(self, client_id, car_name, wheel_names, w, l, r):
         self._next_call = time.time()
@@ -45,7 +45,9 @@ class Car:
         while True:
             self.update_odometry()
             self._next_call += self._period
-            time.sleep(self._next_call - time.time())
+            now = time.time()
+            if now < self._next_call:
+                time.sleep(self._next_call - now)
             if self.is_stop:
                 break
 
