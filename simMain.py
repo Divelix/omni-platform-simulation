@@ -1,4 +1,4 @@
-from omni import Car, vrep
+from omniSim import CarSim, vrep
 from input import OmniParser
 from vis import OmniPlotter, plt
 import sys
@@ -22,7 +22,7 @@ wheel_names = ['OmniTL', 'OmniTR', 'OmniBR', 'OmniBL']
 w = 0.125
 l = 0.125
 r = 0.09 / 2  # wheel radius
-car = Car(client_id, car_name, wheel_names, w, l, r)
+car = CarSim(client_id, car_name, wheel_names, w, l, r)
 car_thread = threading.Thread(target=car.run)
 car_thread.start()
 
